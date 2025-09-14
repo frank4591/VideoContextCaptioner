@@ -77,7 +77,8 @@ class VideoContextCaptionPipeline:
         image_path: str,
         video_path: str,
         context_weight: Optional[float] = None,
-        max_context_length: int = 512
+        max_context_length: int = 512,
+        text_prompt: Optional[str] = None
     ) -> Dict[str, any]:
         """
         Generate image caption using video context.
@@ -87,6 +88,7 @@ class VideoContextCaptionPipeline:
             video_path: Path to the context video
             context_weight: Override default context weight
             max_context_length: Maximum length of context text
+            text_prompt: Custom text prompt for caption generation
             
         Returns:
             Dictionary containing caption and metadata
@@ -106,13 +108,18 @@ class VideoContextCaptionPipeline:
             caption_result = self.image_captioner.generate_caption(
                 image_path=image_path,
                 video_context=video_context,
-                context_weight=context_weight or self.context_weight
+                context_weight=context_weight or self.context_weight,
+                text_prompt=text_prompt
             )
             
             total_time = time.time() - start_time
             
             return {
-                "caption": caption_result["caption"],
+                "raw_output": caption_result.get("raw_output", ""),
+                "context": caption_result.get("context", ""),
+                "prompt": caption_result.get("prompt", ""),
+                "instagram_caption": caption_result.get("instagram_caption", caption_result["caption"]),
+                "caption": caption_result["caption"],  # Keep for backward compatibility
                 "video_context": video_context,
                 "confidence": caption_result["confidence"],
                 "processing_time": total_time,
@@ -162,7 +169,7 @@ class VideoContextCaptionPipeline:
         )
         
         return {
-            "context_text": aggregated_context["text"],
+            "context_text": aggregated_context["context_text"],
             "context_features": aggregated_context["features"],
             "frames_processed": len(frames),
             "frame_captions": frame_captions,

@@ -42,7 +42,8 @@ class ImageCaptioner:
         self,
         image_path: str,
         video_context: Dict[str, any],
-        context_weight: Optional[float] = None
+        context_weight: Optional[float] = None,
+        text_prompt: Optional[str] = None
     ) -> Dict[str, any]:
         """
         Generate image caption with video context.
@@ -51,6 +52,7 @@ class ImageCaptioner:
             image_path: Path to the input image
             video_context: Video context extracted from frames
             context_weight: Override default context weight
+            text_prompt: Custom text prompt for caption generation
             
         Returns:
             Dictionary containing caption and metadata
@@ -65,7 +67,8 @@ class ImageCaptioner:
             result = self.liquid_integration.generate_with_context(
                 image=image_path,
                 context=video_context,
-                context_weight=effective_context_weight
+                context_weight=effective_context_weight,
+                text_prompt=text_prompt
             )
             
             # Calculate additional metrics
@@ -75,7 +78,11 @@ class ImageCaptioner:
             )
             
             return {
-                "caption": result["caption"],
+                "raw_output": result.get("raw_output", ""),
+                "context": result.get("context", ""),
+                "prompt": result.get("prompt", ""),
+                "instagram_caption": result.get("instagram_caption", result["caption"]),
+                "caption": result["caption"],  # Keep for backward compatibility
                 "confidence": result["confidence"],
                 "context_relevance": context_relevance,
                 "processing_time": processing_time,

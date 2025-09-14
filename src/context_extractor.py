@@ -69,7 +69,7 @@ class ContextExtractor:
         """
         if not frame_captions:
             return {
-                "text": "",
+                "context_text": "",
                 "features": np.array([]),
                 "temporal_consistency": 0.0
             }
@@ -103,11 +103,12 @@ class ContextExtractor:
         weights = self._calculate_weights(similarities, len(frame_captions))
         
         # Weighted average of features
-        if frame_features and len(frame_features) > 0:
+        valid_features = [f for f in frame_features if f is not None and len(f) > 0]
+        if valid_features and len(valid_features) > 0:
             weighted_features = np.average(
-                frame_features, 
+                valid_features, 
                 axis=0, 
-                weights=weights
+                weights=weights[:len(valid_features)]
             )
         else:
             weighted_features = np.array([])
@@ -125,7 +126,7 @@ class ContextExtractor:
         temporal_consistency = self._calculate_temporal_consistency(similarities)
         
         return {
-            "text": context_text,
+            "context_text": context_text,  # Changed from "text" to "context_text"
             "features": weighted_features,
             "temporal_consistency": temporal_consistency,
             "weights": weights.tolist(),
@@ -167,7 +168,7 @@ class ContextExtractor:
         )
         
         return {
-            "text": context_text,
+            "context_text": context_text,
             "features": attended_features,
             "temporal_consistency": 0.8,  # Placeholder
             "attention_weights": attention_weights.tolist()
@@ -191,7 +192,7 @@ class ContextExtractor:
             concatenated_features = np.array([])
         
         return {
-            "text": context_text,
+            "context_text": context_text,
             "features": concatenated_features,
             "temporal_consistency": 1.0,  # Perfect consistency for concatenation
             "method": "concatenation"
