@@ -1,6 +1,6 @@
 model:
   name: "LFM2-VL-450M"
-  path: "./models/lfm2-vl-450m"
+  path: "/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M"
   device: "cuda"
   max_length: 512
 

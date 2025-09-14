@@ -56,7 +56,7 @@ def example_basic_usage():
     try:
         # Initialize pipeline
         pipeline = VideoContextCaptionPipeline(
-            model_path="./models/lfm2-vl-450m",  # Update with actual model path
+            model_path="/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M",  # Real LFM2-VL model
             device="cuda",
             frame_extraction_strategy="key_frames",
             max_frames=8,
@@ -95,7 +95,7 @@ def example_advanced_usage():
             logger.info(f"Testing strategy: {strategy}")
             
             pipeline = VideoContextCaptionPipeline(
-                model_path="./models/lfm2-vl-450m",
+                model_path="/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M",
                 device="cuda",
                 frame_extraction_strategy=strategy,
                 max_frames=5,
@@ -127,7 +127,7 @@ def example_batch_processing():
         
         # Initialize pipeline
         pipeline = VideoContextCaptionPipeline(
-            model_path="./models/lfm2-vl-450m",
+            model_path="/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M",
             device="cuda",
             frame_extraction_strategy="key_frames",
             max_frames=6
@@ -167,7 +167,7 @@ def example_context_comparison():
     try:
         # Initialize pipeline
         pipeline = VideoContextCaptionPipeline(
-            model_path="./models/lfm2-vl-450m",
+            model_path="/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M",
             device="cuda",
             frame_extraction_strategy="key_frames",
             max_frames=8
@@ -211,7 +211,7 @@ def example_quality_analysis():
     try:
         # Initialize pipeline
         pipeline = VideoContextCaptionPipeline(
-            model_path="./models/lfm2-vl-450m",
+            model_path="/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M",
             device="cuda"
         )
         
@@ -249,7 +249,7 @@ def example_pipeline_info():
     try:
         # Initialize pipeline
         pipeline = VideoContextCaptionPipeline(
-            model_path="./models/lfm2-vl-450m",
+            model_path="/home/frank/BrandInfluencerDatasetTraining/LFM2-VL-450M",
             device="cuda",
             frame_extraction_strategy="adaptive",
             max_frames=10,

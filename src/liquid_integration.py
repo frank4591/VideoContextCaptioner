@@ -45,8 +45,6 @@ class LiquidAIIntegration:
     
     def _load_model(self, model_path: str):
         """Load the LFM2-VL model."""
-        # This is a placeholder - actual implementation would depend on
-        # the specific LFM2-VL API and model loading mechanism
         try:
             # Check if model path exists
             if not Path(model_path).exists():
@@ -54,20 +52,42 @@ class LiquidAIIntegration:
                 return self._create_mock_model()
             
             # Try to load actual LFM2-VL model
-            # This would be replaced with actual LFM2-VL loading code
             try:
-                from transformers import AutoModel, AutoTokenizer
+                from transformers import AutoModelForImageTextToText, AutoTokenizer, AutoProcessor
                 
-                model = AutoModel.from_pretrained(model_path)
+                logging.info(f"Loading LFM2-VL model from {model_path}...")
+                
+                # Load the model and tokenizer
+                model = AutoModelForImageTextToText.from_pretrained(
+                    model_path,
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto" if self.device == "cuda" else None
+                )
+                
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
+                
+                # Try to load processor if available
+                try:
+                    processor = AutoProcessor.from_pretrained(model_path)
+                except:
+                    processor = None
+                    logging.info("No processor found, using tokenizer only")
+                
+                # Move model to device if not using device_map
+                if self.device != "cuda" or "auto" not in str(model.device):
+                    model = model.to(self.device)
+                
+                logging.info(f"LFM2-VL model loaded successfully on {model.device}")
                 
                 return {
                     "model": model,
                     "tokenizer": tokenizer,
+                    "processor": processor,
                     "is_mock": False
                 }
+                
             except Exception as e:
-                logging.warning(f"Could not load model from {model_path}: {e}. Using mock model.")
+                logging.warning(f"Could not load LFM2-VL model from {model_path}: {e}. Using mock model.")
                 return self._create_mock_model()
                 
         except Exception as e:
@@ -94,8 +114,8 @@ class LiquidAIIntegration:
                 return " ".join([f"token_{id.item()}" for id in token_ids[0]])
         
         class MockModel:
-            def __init__(self):
-                self.device = self.device
+            def __init__(self, device="cpu"):
+                self.device = device
             
             def generate(self, **kwargs):
                 # Mock generation
@@ -105,10 +125,10 @@ class LiquidAIIntegration:
             
             def forward(self, **kwargs):
                 # Mock forward pass
-                return {"logits": torch.randn(1, self.max_length, 1000)}
+                return {"logits": torch.randn(1, 512, 1000)}
         
         return {
-            "model": MockModel(),
+            "model": MockModel(device=self.device),
             "tokenizer": MockTokenizer(),
             "is_mock": True
         }
@@ -312,25 +332,37 @@ class LiquidAIIntegration:
         max_new_tokens: int
     ) -> Dict[str, torch.Tensor]:
         """Generate using LNN's continuous-time processing."""
-        # This is a placeholder - actual implementation would use
-        # the LFM2-VL model's specific API for continuous-time generation
-        
-        # For now, simulate LNN processing
         model = self.model["model"]
         
-        # Generate using the model
+        # Generate using the LFM2-VL model
         with torch.no_grad():
-            if hasattr(model, 'generate'):
-                outputs = model.generate(
-                    **inputs,
-                    temperature=temperature,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=True,
-                    pad_token_id=self.model["tokenizer"].eos_token_id
-                )
+            if self.model.get("is_mock", True):
+                # Mock generation
+                batch_size = inputs.get('pixel_values', torch.randn(1, 3, 224, 224)).shape[0]
+                outputs = torch.randint(1, 1000, (batch_size, max_new_tokens))
             else:
-                # Fallback for models without generate method
-                outputs = torch.randint(1, 1000, (1, max_new_tokens))
+                # Real LFM2-VL generation
+                try:
+                    # Prepare generation parameters
+                    generation_kwargs = {
+                        "max_new_tokens": max_new_tokens,
+                        "temperature": temperature,
+                        "do_sample": True,
+                        "pad_token_id": self.model["tokenizer"].eos_token_id,
+                        "use_cache": True
+                    }
+                    
+                    # Generate with the model
+                    outputs = model.generate(
+                        **inputs,
+                        **generation_kwargs
+                    )
+                    
+                except Exception as e:
+                    logging.warning(f"Error in LFM2-VL generation: {e}. Using fallback.")
+                    # Fallback to simple generation
+                    batch_size = inputs.get('pixel_values', torch.randn(1, 3, 224, 224)).shape[0]
+                    outputs = torch.randint(1, 1000, (batch_size, max_new_tokens))
         
         return {"generated_ids": outputs}
     

@@ -6,6 +6,7 @@ using various strategies and similarity metrics.
 """
 
 import numpy as np
+import os
 from typing import List, Dict, Tuple
 import logging
 from sentence_transformers import SentenceTransformer
@@ -34,9 +35,15 @@ class ContextExtractor:
         self.aggregation_method = aggregation_method
         self.similarity_threshold = similarity_threshold
         
-        # Initialize sentence transformer for text similarity
+        # Initialize sentence transformer for text similarity (optional)
+        self.sentence_model = None
         try:
-            self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+            # Only load if explicitly requested to avoid network dependency
+            if os.getenv('LOAD_SENTENCE_TRANSFORMER', 'false').lower() == 'true':
+                self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+                logging.info("Sentence transformer loaded successfully")
+            else:
+                logging.info("Sentence transformer disabled (set LOAD_SENTENCE_TRANSFORMER=true to enable)")
         except Exception as e:
             logging.warning(f"Could not load sentence transformer: {e}")
             self.sentence_model = None
