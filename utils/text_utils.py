@@ -349,3 +349,5 @@ class TextUtils:
             caption = caption[:max_length-3] + "..."
         
         return caption
+
+

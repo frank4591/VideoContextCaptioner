@@ -38,3 +38,5 @@ echo "2. Run the example: python examples/run_example.py"
 echo "3. Run tests: python -m pytest tests/"
 echo ""
 echo "Note: You'll need to provide a valid LFM2-VL model path in the examples."
+
+

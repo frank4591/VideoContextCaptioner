@@ -334,3 +334,5 @@ class FrameUtils:
         except Exception as e:
             logging.error(f"Error analyzing frame sequence: {str(e)}")
             return {}
+
+
