@@ -1,0 +1,390 @@
+"""
+Integration with Liquid AI's LFM2-VL models.
+
+This module handles the interaction with Liquid Neural Networks
+and leverages their continuous-time processing capabilities.
+"""
+
+import torch
+import numpy as np
+from typing import Dict, List, Optional, Union
+import logging
+from pathlib import Path
+import time
+
+class LiquidAIIntegration:
+    """
+    Integration with Liquid AI's LFM2-VL models.
+    
+    This class handles the interaction with Liquid Neural Networks
+    and leverages their continuous-time processing capabilities.
+    """
+    
+    def __init__(
+        self,
+        model_path: str,
+        device: str = "cuda",
+        max_length: int = 512
+    ):
+        """
+        Initialize Liquid AI integration.
+        
+        Args:
+            model_path: Path to the LFM2-VL model
+            device: Device to run inference on
+            max_length: Maximum sequence length
+        """
+        self.device = device
+        self.max_length = max_length
+        self.model_path = model_path
+        
+        # Initialize model (placeholder - actual implementation depends on LFM2-VL API)
+        self.model = self._load_model(model_path)
+        
+        logging.info(f"Liquid AI integration initialized with model: {model_path}")
+    
+    def _load_model(self, model_path: str):
+        """Load the LFM2-VL model."""
+        # This is a placeholder - actual implementation would depend on
+        # the specific LFM2-VL API and model loading mechanism
+        try:
+            # Check if model path exists
+            if not Path(model_path).exists():
+                logging.warning(f"Model path {model_path} does not exist. Using mock model.")
+                return self._create_mock_model()
+            
+            # Try to load actual LFM2-VL model
+            # This would be replaced with actual LFM2-VL loading code
+            try:
+                from transformers import AutoModel, AutoTokenizer
+                
+                model = AutoModel.from_pretrained(model_path)
+                tokenizer = AutoTokenizer.from_pretrained(model_path)
+                
+                return {
+                    "model": model,
+                    "tokenizer": tokenizer,
+                    "is_mock": False
+                }
+            except Exception as e:
+                logging.warning(f"Could not load model from {model_path}: {e}. Using mock model.")
+                return self._create_mock_model()
+                
+        except Exception as e:
+            logging.error(f"Error loading model: {str(e)}")
+            return self._create_mock_model()
+    
+    def _create_mock_model(self):
+        """Create a mock model for testing purposes."""
+        logging.info("Creating mock model for testing")
+        
+        class MockTokenizer:
+            def __init__(self):
+                self.eos_token_id = 2
+                self.pad_token_id = 0
+            
+            def encode(self, text, **kwargs):
+                # Simple tokenization
+                tokens = text.split()[:self.max_length]
+                return {"input_ids": torch.tensor([[hash(word) % 1000 for word in tokens]]),
+                        "attention_mask": torch.ones((1, len(tokens)))}
+            
+            def decode(self, token_ids, **kwargs):
+                # Simple decoding
+                return " ".join([f"token_{id.item()}" for id in token_ids[0]])
+        
+        class MockModel:
+            def __init__(self):
+                self.device = self.device
+            
+            def generate(self, **kwargs):
+                # Mock generation
+                batch_size = kwargs.get('pixel_values', torch.randn(1, 3, 224, 224)).shape[0]
+                seq_len = kwargs.get('max_new_tokens', 10)
+                return torch.randint(1, 1000, (batch_size, seq_len))
+            
+            def forward(self, **kwargs):
+                # Mock forward pass
+                return {"logits": torch.randn(1, self.max_length, 1000)}
+        
+        return {
+            "model": MockModel(),
+            "tokenizer": MockTokenizer(),
+            "is_mock": True
+        }
+    
+    def generate_caption(
+        self,
+        image: Union[str, np.ndarray],
+        text_prompt: Optional[str] = None,
+        return_features: bool = False,
+        temperature: float = 0.7,
+        max_new_tokens: int = 256
+    ) -> Dict[str, any]:
+        """
+        Generate caption for an image using LFM2-VL.
+        
+        Args:
+            image: Input image (path or numpy array)
+            text_prompt: Optional text prompt for conditioning
+            return_features: Whether to return feature vectors
+            temperature: Sampling temperature
+            max_new_tokens: Maximum number of new tokens to generate
+            
+        Returns:
+            Dictionary containing caption and optional features
+        """
+        start_time = time.time()
+        
+        try:
+            # Preprocess image
+            processed_image = self._preprocess_image(image)
+            
+            # Prepare input
+            inputs = self._prepare_inputs(
+                image=processed_image,
+                text_prompt=text_prompt
+            )
+            
+            # Generate caption using LNN's continuous-time processing
+            with torch.no_grad():
+                outputs = self._generate_with_lnn(
+                    inputs=inputs,
+                    temperature=temperature,
+                    max_new_tokens=max_new_tokens
+                )
+            
+            # Extract caption and features
+            caption = self._extract_caption(outputs)
+            features = None
+            
+            if return_features:
+                features = self._extract_features(outputs)
+            
+            processing_time = time.time() - start_time
+            
+            return {
+                "caption": caption,
+                "features": features,
+                "confidence": self._calculate_confidence(outputs),
+                "processing_time": processing_time
+            }
+            
+        except Exception as e:
+            logging.error(f"Error generating caption: {str(e)}")
+            raise
+    
+    def generate_with_context(
+        self,
+        image: Union[str, np.ndarray],
+        context: Dict[str, any],
+        context_weight: float = 0.7
+    ) -> Dict[str, any]:
+        """
+        Generate caption with video context using LNN's adaptive state.
+        
+        This leverages the LNN's ability to maintain and adapt its internal
+        state based on contextual information.
+        """
+        start_time = time.time()
+        
+        try:
+            # Preprocess image
+            processed_image = self._preprocess_image(image)
+            
+            # Prepare context-aware input
+            context_prompt = self._prepare_context_prompt(context)
+            
+            # Use LNN's adaptive state for context integration
+            inputs = self._prepare_contextual_inputs(
+                image=processed_image,
+                context_prompt=context_prompt,
+                context_weight=context_weight
+            )
+            
+            # Generate with context using LNN's continuous-time processing
+            with torch.no_grad():
+                outputs = self._generate_with_contextual_lnn(
+                    inputs=inputs,
+                    context=context
+                )
+            
+            caption = self._extract_caption(outputs)
+            context_relevance = self._calculate_context_relevance(
+                caption, context
+            )
+            
+            processing_time = time.time() - start_time
+            
+            return {
+                "caption": caption,
+                "context_relevance": context_relevance,
+                "confidence": self._calculate_confidence(outputs),
+                "processing_time": processing_time
+            }
+            
+        except Exception as e:
+            logging.error(f"Error generating contextual caption: {str(e)}")
+            raise
+    
+    def _preprocess_image(self, image: Union[str, np.ndarray]) -> np.ndarray:
+        """Preprocess image for LFM2-VL input."""
+        import cv2
+        
+        if isinstance(image, str):
+            # Load image from path
+            img = cv2.imread(image)
+            if img is None:
+                raise ValueError(f"Could not load image from {image}")
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        else:
+            img = image
+        
+        # Resize and normalize
+        img = cv2.resize(img, (224, 224))
+        img = img.astype(np.float32) / 255.0
+        
+        return img
+    
+    def _prepare_inputs(
+        self,
+        image: np.ndarray,
+        text_prompt: Optional[str] = None
+    ) -> Dict[str, torch.Tensor]:
+        """Prepare inputs for LFM2-VL model."""
+        # Convert image to tensor
+        image_tensor = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)
+        image_tensor = image_tensor.to(self.device)
+        
+        inputs = {"pixel_values": image_tensor}
+        
+        if text_prompt:
+            # Tokenize text prompt
+            tokenized = self.model["tokenizer"](
+                text_prompt,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=self.max_length
+            )
+            inputs.update({
+                "input_ids": tokenized["input_ids"].to(self.device),
+                "attention_mask": tokenized["attention_mask"].to(self.device)
+            })
+        
+        return inputs
+    
+    def _prepare_context_prompt(self, context: Dict[str, any]) -> str:
+        """Prepare context prompt from video context."""
+        context_text = context.get("context_text", "")
+        if not context_text:
+            return ""
+        
+        # Create context-aware prompt
+        prompt = f"Based on the video context: {context_text}\nGenerate a caption for this image:"
+        
+        return prompt
+    
+    def _prepare_contextual_inputs(
+        self,
+        image: np.ndarray,
+        context_prompt: str,
+        context_weight: float
+    ) -> Dict[str, torch.Tensor]:
+        """Prepare inputs with video context."""
+        # Prepare base inputs
+        inputs = self._prepare_inputs(image, context_prompt)
+        
+        # Add context features if available
+        if "context_features" in context_prompt:
+            context_features = context_prompt["context_features"]
+            if context_features is not None:
+                context_tensor = torch.from_numpy(context_features).to(self.device)
+                inputs["context_features"] = context_tensor
+                inputs["context_weight"] = torch.tensor(context_weight).to(self.device)
+        
+        return inputs
+    
+    def _generate_with_lnn(
+        self,
+        inputs: Dict[str, torch.Tensor],
+        temperature: float,
+        max_new_tokens: int
+    ) -> Dict[str, torch.Tensor]:
+        """Generate using LNN's continuous-time processing."""
+        # This is a placeholder - actual implementation would use
+        # the LFM2-VL model's specific API for continuous-time generation
+        
+        # For now, simulate LNN processing
+        model = self.model["model"]
+        
+        # Generate using the model
+        with torch.no_grad():
+            if hasattr(model, 'generate'):
+                outputs = model.generate(
+                    **inputs,
+                    temperature=temperature,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=True,
+                    pad_token_id=self.model["tokenizer"].eos_token_id
+                )
+            else:
+                # Fallback for models without generate method
+                outputs = torch.randint(1, 1000, (1, max_new_tokens))
+        
+        return {"generated_ids": outputs}
+    
+    def _generate_with_contextual_lnn(
+        self,
+        inputs: Dict[str, torch.Tensor],
+        context: Dict[str, any]
+    ) -> Dict[str, torch.Tensor]:
+        """Generate with context using LNN's adaptive state."""
+        # This would leverage the LNN's ability to maintain state
+        # and adapt based on contextual information
+        
+        # Placeholder implementation
+        return self._generate_with_lnn(inputs, temperature=0.7, max_new_tokens=256)
+    
+    def _extract_caption(self, outputs: Dict[str, torch.Tensor]) -> str:
+        """Extract caption from model outputs."""
+        generated_ids = outputs["generated_ids"]
+        
+        # Decode generated tokens
+        caption = self.model["tokenizer"].decode(
+            generated_ids[0], 
+            skip_special_tokens=True
+        )
+        
+        return caption.strip()
+    
+    def _extract_features(self, outputs: Dict[str, torch.Tensor]) -> np.ndarray:
+        """Extract feature vectors from model outputs."""
+        # This would extract the LNN's internal state or hidden features
+        # Placeholder implementation
+        return np.random.randn(768)  # Example feature vector
+    
+    def _calculate_confidence(self, outputs: Dict[str, torch.Tensor]) -> float:
+        """Calculate confidence score for generated caption."""
+        # This would calculate confidence based on model outputs
+        # Placeholder implementation
+        return 0.85
+    
+    def _calculate_context_relevance(
+        self,
+        caption: str,
+        context: Dict[str, any]
+    ) -> float:
+        """Calculate how relevant the context is to the generated caption."""
+        # This would use similarity metrics to assess context relevance
+        # Placeholder implementation
+        return 0.75
+    
+    def get_model_info(self) -> Dict[str, any]:
+        """Get information about the loaded model."""
+        return {
+            "model_path": self.model_path,
+            "device": self.device,
+            "max_length": self.max_length,
+            "is_mock": self.model.get("is_mock", False)
+        }

@@ -1,0 +1,27 @@
+model:
+  name: "LFM2-VL-450M"
+  path: "./models/lfm2-vl-450m"
+  device: "cuda"
+  max_length: 512
+
+video_processing:
+  frame_extraction_strategy: "key_frames"  # key_frames, uniform, adaptive
+  max_frames: 10
+  frame_interval: 1.0  # seconds for uniform sampling
+  scene_change_threshold: 30
+
+context_extraction:
+  aggregation_method: "weighted_average"  # weighted_average, attention, concatenation
+  similarity_threshold: 0.7
+  max_context_length: 512
+  temporal_weighting: true
+
+generation:
+  temperature: 0.7
+  max_new_tokens: 256
+  context_weight: 0.7
+  do_sample: true
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
